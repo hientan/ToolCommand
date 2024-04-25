@@ -13,13 +13,14 @@ services:
       SERVER_ID: "1"
       SERVER_COUNT: "1"
       LOG_LEVEL: "WARN"
+
   # Kafka - Broker
   kafka:
     image: debezium/kafka:2.3.3.Final
     container_name: tan-kafka
     restart: unless-stopped
     depends_on:
-      zookeeper:
+      - zookeeper
     ports:
       - "${KAFKA_PORT:-9092}:9092"
       - "29092:29092"
@@ -36,17 +37,16 @@ services:
       CREATE_TOPICS: "debezium_connect_config:1:1:compact,debezium_connect_offsets:1:1:compact,debezium_connect_status:1:1:compact"
     healthcheck:
       test:
-        [
-          "CMD",
-          "./bin/kafka-topics.sh",
-          "--list",
-          "--bootstrap-server",
-          "tan-kafka:29092"
-        ]
+        - "CMD"
+        - "./bin/kafka-topics.sh"
+        - "--list"
+        - "--bootstrap-server"
+        - "tan-kafka:29092"
       interval: 10s
       timeout: 5s
       retries: 5
   
+  # Kafka UI
   kafka-ui:
     container_name: tan-kafka-ui
     depends_on:
@@ -58,6 +58,6 @@ services:
       AKHQ_CONFIGURATION: |
         akhq:
           connections:
-            docker-kafka-server:
+            tan-kafka:
               properties:
                 bootstrap.servers: "tan-kafka:29092"
