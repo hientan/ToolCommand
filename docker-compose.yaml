@@ -1,0 +1,64 @@
+version: '3.9'
+services:
+  # Kafka - Zookeeper
+  zookeeper:
+    image: debezium/zookeeper:2.3.3.Final
+    container_name: tan-zookeeper
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+    environment:
+      SERVER_ID: "1"
+      SERVER_COUNT: "1"
+      LOG_LEVEL: "WARN"
+  # Kafka - Broker
+  kafka:
+    image: debezium/kafka:2.3.3.Final
+    container_name: tan-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_started
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "29092:29092"
+    environment:
+      NODE_ID: "1"
+      ZOOKEEPER_CONNECT: "tan-zookeeper:2181"
+      LOG_LEVEL: "WARN"
+      KAFKA_LOG_RETENTION_HOURS: "1"
+      KAFKA_LISTENERS: "PLAINTEXT://tan-kafka:29092,PLAINTEXT_HOST://tan-kafka:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://tan-kafka:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CREATE_TOPICS: "debezium_connect_config:1:1:compact,debezium_connect_offsets:1:1:compact,debezium_connect_status:1:1:compact"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "./bin/kafka-topics.sh",
+          "--list",
+          "--bootstrap-server",
+          "tan-kafka:29092"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  kafka-ui:
+    container_name: tan-kafka-ui
+    depends_on:
+      - kafka
+    image: tchiotludo/akhq
+    ports:
+      - "8082:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "tan-kafka:29092"
