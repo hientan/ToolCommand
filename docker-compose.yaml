@@ -20,7 +20,6 @@ services:
     restart: unless-stopped
     depends_on:
       zookeeper:
-        condition: service_started
     ports:
       - "${KAFKA_PORT:-9092}:9092"
       - "29092:29092"
